@@ -1,0 +1,19 @@
+name: Deploy Web App to Azure VM
+
+on:
+  push:
+    branches: [ "main" ] # Triggers every time you push code to main
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, azure-vm] # Tells GitHub to execute this directly on your VM runner
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Shutdown existing containers
+        run: docker compose down --remove-orphans || true
+
+      - name: Start updated App and Database
+        run: docker compose up -d --build

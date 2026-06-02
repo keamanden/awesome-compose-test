@@ -3,9 +3,11 @@ name: Build Awesome-Compose Folder and Deploy
 on:
   push:
     branches: [ "main" ]
+    workflow_dispatch:
     # 🎯 Only run if you edit something inside the flask-redis folder
     paths:
       - 'flask-redis/**'
+    
 
 jobs:
   build-and-push:

@@ -3,7 +3,7 @@ name: Build and Remote SSH Deploy
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:     #  Aligned perfectly with push:
 
 jobs:

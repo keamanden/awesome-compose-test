@@ -2,7 +2,8 @@ name: Build and Remote SSH Deploy
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch:     # Keeps your manual "Run workflow" play button active
 
 jobs:

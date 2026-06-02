@@ -1,0 +1,79 @@
+name: Build Awesome-Compose Folder and Deploy
+
+on:
+  push:
+    branches: [ "main" ]
+    # 🎯 Only run if you edit something inside the flask-redis folder
+    paths:
+      - 'flask-redis/**'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 💥 CRUCIAL FOR AWESOME-COMPOSE: 
+      # We build the custom image right here using their local Dockerfile
+      - name: Build and Push Custom Python App
+        uses: docker/build-push-action@v5
+        with:
+          context: ./flask-redis   # Moves into the specific subfolder
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}--awesome-flask:latest
+
+  deploy-to-vm:
+    needs: build-and-push
+    runs-on: [self-hosted, azure-vm]
+    steps:
+      # 1. We must log in to Docker Hub ON THE VM so it has permission to pull your new image
+      - name: Log in to Docker Hub on VM
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 2. Grab the fresh custom app image down to your Azure VM
+      - name: Pull fresh image
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}--awesome-flask:latest
+
+      # 3. Pull down the official Redis image too, just to be sure
+      - name: Pull official database image
+        run: docker pull redis:alpine
+
+      # 4. Wipe out any old running test containers
+      - name: Clean old containers
+        run: |
+          docker stop flask-app redis-db || true
+          docker rm flask-app redis-db || true
+
+      # 5. Spin up the 2-container architecture manually via Docker Run commands
+      # First, make an isolated network so the app can talk to the database safely
+      - name: Setup isolated network
+        run: docker network create awesome-net || true
+
+      # Next, start the Redis Database container (Hidden from Azure firewall)
+      - name: Start Redis Database
+        run: |
+          docker run -d \
+            --name redis-db \
+            --network awesome-net \
+            redis:alpine
+
+      # Finally, start the custom Web App container (Exposed to Azure port 80)
+      - name: Start Web App
+        run: |
+          docker run -d \
+            -p 80:5000 \
+            --name flask-app \
+            --network awesome-net \
+            -e REDIS_HOST=redis-db \
+            ${{ secrets.DOCKERHUB_USERNAME }}--awesome-flask:latest
+          

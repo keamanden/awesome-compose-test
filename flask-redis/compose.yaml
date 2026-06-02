@@ -1,18 +1,12 @@
 services:
-  redis:
-    image: redislabs/redismod
-    ports:
-      - '6379:6379'
   web:
-    build:
-      context: .
-      target: builder
-    # flask requires SIGINT to stop gracefully
-    # (default stop signal from Compose is SIGTERM)
-    stop_signal: SIGINT
+    build: .
     ports:
-      - '8000:8000'
-    volumes:
-      - .:/code
+      - "80:5000"
+    environment:
+      - REDIS_HOST=database
     depends_on:
-      - redis
+      - database
+
+  database:
+    image: redis:alpine

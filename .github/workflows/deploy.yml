@@ -25,7 +25,7 @@ jobs:
         with:
           context: ./flask-redis   # Moves into the specific subfolder
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}--awesome-flask:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/awesome-flask:latest
 
   deploy-to-vm:
     needs: build-and-push
@@ -40,7 +40,7 @@ jobs:
 
       # 2. Grab the fresh custom app image down to your Azure VM
       - name: Pull fresh image
-        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}--awesome-flask:latest
+        run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/awesome-flask:latest
 
       # 3. Pull down the official Redis image too, just to be sure
       - name: Pull official database image

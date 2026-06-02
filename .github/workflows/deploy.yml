@@ -29,7 +29,7 @@ jobs:
 
   deploy-to-vm:
     needs: build-and-push
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       # 1. We must log in to Docker Hub ON THE VM so it has permission to pull your new image
       - name: Log in to Docker Hub on VM

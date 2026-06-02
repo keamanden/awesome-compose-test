@@ -1,19 +1,41 @@
-name: Deploy Web App to Azure VM
+name: Build to Docker Hub and Deploy to VM
 
 on:
   push:
-    branches: [ "main" ] # Triggers every time you push code to main
+    branches: [ "main" ]
 
 jobs:
-  deploy:
-    runs-on: [self-hosted, azure-vm] # Tells GitHub to execute this directly on your VM runner
-
+  # JOB 1: Build and Push (Runs safely up in GitHub's free cloud)
+  build-and-push:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Shutdown existing containers
-        run: docker compose down --remove-orphans || true
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets::DOCKERHUB_USERNAME }}
+          password: ${{ secrets::DOCKERHUB_TOKEN }}
 
-      - name: Start updated App and Database
-        run: docker compose up -d --build
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # Replaces 'username' with yours and tags the image as 'latest'
+          tags: ${{ secrets::DOCKERHUB_USERNAME }}/my-test-app:latest
+
+  # JOB 2: Pull and Run (Runs locally down on your private Azure VM)
+  deploy-to-vm:
+    needs: build-and-push # Ensures deployment only happens IF the build succeeds!
+    runs-on: [self-hosted, azure-vm]
+    steps:
+      - name: Pull latest image from Docker Hub
+        run: docker pull ${{ secrets::DOCKERHUB_USERNAME }}/my-test-app:latest
+
+      - name: Stop old container if running
+        run: docker stop my-running-app || true && docker rm my-running-app || true
+
+      - name: Start fresh app container
+        run: docker run -d -p 80:5000 --name my-running-app ${{ secrets::DOCKERHUB_USERNAME }}/my-test-app:latest

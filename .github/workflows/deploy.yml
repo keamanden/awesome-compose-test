@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:     # Keeps your manual "Run workflow" play button active
+  workflow_dispatch:     #  Aligned perfectly with push:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest  # Runs in GitHub Cloud
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
 
   deploy-to-vm:
     needs: build-and-push
-    runs-on: ubuntu-latest  # Runs in GitHub Cloud
+    runs-on: ubuntu-latest
     steps:
       - name: Executing remote ssh commands to deploy
         uses: appleboy/ssh-action@v1.0.3
@@ -36,6 +36,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
+          command_timeout: 2m  #  Keeps the tunnel clean on your 512MB VM
           script: |
             # 1. Securely log into Docker Hub from inside your Azure VM
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
@@ -47,11 +48,10 @@ jobs:
             # 3. Cleanly tear down any older running containers to prevent port clashes
             docker stop flask-app redis || true
             docker rm flask-app redis || true
-            docker network create awesome-net || true
             
             # 4. Create the internal app network if it doesn't already exist
             docker network create awesome-net || true
             
-            # 5. Boot up the brand-new application stack
+            # 5. Boot up the brand-new application stack with memory restrictions
             docker run -d --name redis --network awesome-net -m 64m redis:alpine
             docker run -d -p 80:8000 --name flask-app --network awesome-net -e REDIS_HOST=redis -m 128m ${{ secrets.DOCKERHUB_USERNAME }}/awesome-flask:latest

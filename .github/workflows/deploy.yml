@@ -44,12 +44,13 @@ jobs:
             docker pull redis:alpine
             
             # 3. Cleanly tear down any older running containers to prevent port clashes
-            docker stop flask-app redis-db || true
-            docker rm flask-app redis-db || true
+            docker stop flask-app redis || true
+            docker rm flask-app redis || true
+            docker network create awesome-net || true
             
             # 4. Create the internal app network if it doesn't already exist
             docker network create awesome-net || true
             
             # 5. Boot up the brand-new application stack
-            docker run -d --name redis-db --network awesome-net redis:alpine
-            docker run -d -p 80:5000 --name flask-app --network awesome-net -e REDIS_HOST=redis-db ${{ secrets.DOCKERHUB_USERNAME }}/awesome-flask:latest
+            docker run -d --name redis --network awesome-net -m 64m redis:alpine
+            docker run -d -p 80:8000 --name flask-app --network awesome-net -e REDIS_HOST=redis -m 128m ${{ secrets.DOCKERHUB_USERNAME }}/awesome-flask:latest
